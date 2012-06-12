@@ -2,8 +2,12 @@
 > dist
 $ exists target/scala-2.9.1/xyz-app-1.0/bin
 $ exists target/scala-2.9.1/xyz-app-1.0/bin/xyz-app
+$ exists target/scala-2.9.1/xyz-app-1.0/bin/xyz-app.bat
 $ exists target/scala-2.9.1/xyz-app-1.0/conf
+$ exists target/scala-2.9.1/xyz-app-1.0/conf/wrapper.conf
 $ exists target/scala-2.9.1/xyz-app-1.0/lib
+$ exists target/scala-2.9.1/xyz-app-1.0/lib/xyz-app_2.9.1-1.0.jar
+$ exists target/scala-2.9.1/xyz-app-1.0/logs
 $ exists target/scala-2.9.1/xyz-app-1.0/logs/wrapper.log
 > clean
 $ absent target/scala-2.9.1/xyz-app-1.0
