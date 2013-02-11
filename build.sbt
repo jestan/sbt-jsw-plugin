@@ -13,6 +13,8 @@ scalacOptions += "-deprecation"
 
 scalacOptions += "-unchecked"
 
+scalaVersion := "2.9.2"
+
 publishMavenStyle := true
 
 libraryDependencies += "org.skife.tar" % "java-gnu-tar" % "0.0.1"
