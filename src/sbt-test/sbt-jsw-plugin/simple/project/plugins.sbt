@@ -1,1 +1,1 @@
-addSbtPlugin("hms.sbt.plugins" % "sbt-jsw-plugin" % "0.1-SNAPSHOT")
+addSbtPlugin("hms.sbt.plugins" % "sbt-jsw-plugin" % "0.2.0")

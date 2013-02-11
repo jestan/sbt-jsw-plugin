@@ -69,9 +69,8 @@ object SbtJswPlugin extends Plugin {
     (distConfig, crossTarget, update, dependencyClasspath, projectDependencies, allDependencies, buildStructure, state) map {
       (conf, tgt, updateResults, cp, projDeps, allDeps, buildStruct, st) =>
 
-        val log = logger(st)
-
         val outputDir = tgt / (conf.distName + "-" + conf.distVersion)
+
         val distBinPath = outputDir / "bin"
         val distConfigPath = outputDir / "conf"
         val distLibPath = outputDir / "lib"
@@ -79,11 +78,11 @@ object SbtJswPlugin extends Plugin {
 
         val subProjectDependencies: Set[SubProjectInfo] = allSubProjectDependencies(projDeps, buildStruct, st)
 
-        log.info("Starting to create JSW distribution at %s ..." format outputDir)
+        st.log.info("Starting to create JSW distribution at %s ..." format outputDir)
 
         val jswExtractionDir = IO.createTemporaryDirectory
 
-        log.info("Unpacked JSW resources to %s ..." format jswExtractionDir)
+        st.log.info("Unpacked JSW resources to %s ..." format jswExtractionDir)
         unpackJswDeltaPack(jswExtractionDir, updateResults)
 
         val jswDir = jswExtractionDir / (jswDeltaPackName + "-" + jswDeltaPackVersion)
@@ -132,7 +131,7 @@ object SbtJswPlugin extends Plugin {
         //Generate Java Service Wrapper exec scripts
         JswConf(conf.distName, conf.jswMainClass, jswLibPaths.mkString("\n")).writeToPath(distConfigPath)
 
-        log.info("JSW distribution created.")
+        st.log.info("JSW distribution created at %s." format outputDir)
 
         outputDir
     }
@@ -995,7 +994,7 @@ object SbtJswPlugin extends Plugin {
 
     def setting[A](key: SettingKey[A], errorMessage: => String) = {
       optionalSetting(key) getOrElse {
-        logger(state).error(errorMessage);
+        state.log.error(errorMessage)
         throw new IllegalArgumentException()
       }
     }
