@@ -69,7 +69,7 @@ object SbtJswPlugin extends Plugin {
     (distConfig, crossTarget, update, dependencyClasspath, projectDependencies, allDependencies, buildStructure, state) map {
       (conf, tgt, updateResults, cp, projDeps, allDeps, buildStruct, st) =>
 
-        val log = logger(st)
+        val log = st.log
 
         val outputDir = tgt / (conf.distName + "-" + conf.distVersion)
         val distBinPath = outputDir / "bin"
@@ -995,7 +995,7 @@ object SbtJswPlugin extends Plugin {
 
     def setting[A](key: SettingKey[A], errorMessage: => String) = {
       optionalSetting(key) getOrElse {
-        logger(state).error(errorMessage);
+        state.log.error(errorMessage);
         throw new IllegalArgumentException()
       }
     }
