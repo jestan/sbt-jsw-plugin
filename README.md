@@ -7,11 +7,11 @@ A Maven app-assembler-plugin like thingy for SBT
 
 
 ## Requirements
- sbt 0.11.x
+ sbt 0.12.x
 
 ## Installation
 
- sbt 0.11.x
+ sbt 0.12.x
 
  Build the plugin in and publish it locally.
 
