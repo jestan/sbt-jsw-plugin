@@ -24,8 +24,3 @@ publishTo <<= (version) { version: String =>
   else
     Some("Repository Archiva Managed internal Repository" at repo + "internal/")
 }
-
-credentials += Credentials("Repository Archiva Managed internal Repository", "192.168.0.7", "nirojan", "nirojan123")
-
-credentials += Credentials("Repository Archiva Managed snapshots Repository", "192.168.0.7", "nirojan", "nirojan123")
-
