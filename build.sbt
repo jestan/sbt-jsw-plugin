@@ -7,7 +7,7 @@ organization := "hms.sbt.plugins"
 
 name := "sbt-jsw-plugin"
 
-version := "0.2.0"
+version := "0.2.1"
 
 scalacOptions += "-deprecation"
 

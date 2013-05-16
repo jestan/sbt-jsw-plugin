@@ -3,7 +3,6 @@ import Keys._
 import Load.BuildStructure
 import classpath.ClasspathUtilities
 import Project.Initialize
-import CommandSupport._
 
 
 import org.skife.tar.Tar
@@ -15,6 +14,9 @@ object SbtJswPlugin extends Plugin {
                        distVersion: String,
                        configSourceDirs: Seq[File],
                        jswMainClass: String,
+                       initHeapInMB: Int,
+                       maxHeapInMB: Int,
+                       supportedPlatforms: Seq[String],
                        libFilter: File ⇒ Boolean,
                        additionalLibs: Seq[File])
 
@@ -33,6 +35,11 @@ object SbtJswPlugin extends Plugin {
 
 
   val jswJvmOptions = SettingKey[String]("jsw-jvm-options", "JVM parameters to use in start script")
+
+  val jswInitialHeapSizeInMB = SettingKey[Int]("jsw-init-memory-options", "JVM initial heap size in MB")
+  val jswMaxHeapSizeInMB = SettingKey[Int]("jsw-max-memory-options", "JVM max heap size in MB")
+
+  val jswSupportedPlatforms = SettingKey[Seq[String]]("jsw-supported-platforms-options", "JSW App supported Operating Systems")
 
   val libFilter = SettingKey[File ⇒ Boolean]("lib-filter", "Filter of dependency jar files")
   val additionalLibs = TaskKey[Seq[File]]("additional-libs", "Additional dependency jar files")
@@ -56,7 +63,7 @@ object SbtJswPlugin extends Plugin {
           f ⇒ true
         },
         additionalLibs <<= defaultAdditionalLibs,
-        distConfig <<= (name, version, configSourceDirs, jswMainClass, libFilter, additionalLibs) map JswConfig
+        distConfig <<= (name, version, configSourceDirs, jswMainClass, jswInitialHeapSizeInMB, jswMaxHeapSizeInMB, jswSupportedPlatforms, libFilter, additionalLibs) map JswConfig
       )
     ) ++
       Seq(
@@ -97,7 +104,7 @@ object SbtJswPlugin extends Plugin {
         JswScript(conf.distName).writeToPath(distBinPath)
 
         //Copy all jsw exec deps to bin dir
-        copyFiles(IO.listFiles(jswDir / "bin"), distBinPath, (f: File) => f.name.startsWith("wrapper-"), true)
+        copyFiles(IO.listFiles(jswDir / "bin"), distBinPath, (f: File) => f.name.contains(conf.distName) || conf.supportedPlatforms.exists(s => f.name.contains(s)), true)
 
         //Copy all app conf dir
         copyDirectories(conf.configSourceDirs, distConfigPath)
@@ -109,13 +116,20 @@ object SbtJswPlugin extends Plugin {
         copyJars(tgt, distLibPath)
 
         //Copy all jsw jars and platform specific binaries
-        copyFiles(IO.listFiles(jswDir / "lib"), distLibPath, (f: File) => !f.name.contains("wrappertest.jar"))
+        val libFileFilter = (f: File) => {
+          if(f.name.contains("libwrapper-") || f.name.contains("wrapper-windows-")) {
+            conf.supportedPlatforms.exists(s => f.name.contains(s))
+          } else {
+            !f.name.contains("wrappertest.jar")
+          }
+        }
+        copyFiles(IO.listFiles(jswDir / "lib"), distLibPath, libFileFilter)
 
         //Copy all transitive dependencies of the project
         copyFiles(libFiles(cp, conf.libFilter), distLibPath)
 
         //Copy additional jars to lib dir
-        copyFiles(conf.additionalLibs, distLibPath)
+        copyFiles(conf.additionalLibs, distLibPath, conf.libFilter)
 
         for (subTarget <- subProjectDependencies.map(_.target)) {
           copyJars(subTarget, distLibPath)
@@ -129,7 +143,7 @@ object SbtJswPlugin extends Plugin {
 
 
         //Generate Java Service Wrapper exec scripts
-        JswConf(conf.distName, conf.jswMainClass, jswLibPaths.mkString("\n")).writeToPath(distConfigPath)
+        JswConf(conf.distName, conf.jswMainClass, jswLibPaths.mkString("\n"), conf.initHeapInMB, conf.maxHeapInMB).writeToPath(distConfigPath)
 
         st.log.info("JSW distribution created at %s." format outputDir)
 
@@ -810,7 +824,7 @@ object SbtJswPlugin extends Plugin {
 
   }
 
-  private case class JswConf(appName: String, mainClass: String, libPaths: String) {
+  private case class JswConf(appName: String, mainClass: String, libPaths: String, initHeapInMB: Int, maxHeapInMB: Int) {
 
     def writeToPath(to: File) {
       val target = new File(to, "wrapper.conf")
@@ -852,10 +866,10 @@ object SbtJswPlugin extends Plugin {
         |#wrapper.java.additional.1=
         |
         |# Initial Java Heap Size (in MB)
-        |#wrapper.java.initmemory=3
+        |wrapper.java.initmemory=%s
         |
         |# Maximum Java Heap Size (in MB)
-        |#wrapper.java.maxmemory=64
+        |wrapper.java.maxmemory=%s
         |
         |# Application parameters.  Add parameters as needed starting from 1
         |wrapper.app.parameter.1=%s
@@ -930,7 +944,7 @@ object SbtJswPlugin extends Plugin {
         |wrapper.ntservice.interactive=false
         |
         |configuration.directory.in.classpath.first=conf
-      """.stripMargin.format(libPaths, mainClass, appName, appName, appName, appName)
+      """.stripMargin.format(libPaths, initHeapInMB, maxHeapInMB, mainClass, appName, appName, appName, appName)
 
   }
 
@@ -973,17 +987,23 @@ object SbtJswPlugin extends Plugin {
   private def allSubProjectDependencies(projDeps: Seq[ModuleID], buildStruct: BuildStructure, state: State): Set[SubProjectInfo] = {
     val buildUnit = buildStruct.units(buildStruct.root)
     val uri = buildStruct.root
+
     val allProjects = buildUnit.defined.map {
       case (id, proj) => (ProjectRef(uri, id) -> proj)
     }
 
     val projDepsNames = projDeps.map(_.name)
-    def include(project: ResolvedProject): Boolean = projDepsNames.exists(_ == project.id)
+
+    def include(project: ResolvedProject): Boolean = {
+      projDepsNames.exists(_ == project.id)
+    }
+
     val subProjects: Seq[SubProjectInfo] = allProjects.collect {
       case (projRef, project) if include(project) => projectInfo(projRef, project, buildStruct, state, allProjects)
     }.toList
 
     val allSubProjects = subProjects.map(_.recursiveSubProjects).flatten.toSet
+
     allSubProjects
   }
 
