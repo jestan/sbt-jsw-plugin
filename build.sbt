@@ -16,6 +16,8 @@ publishMavenStyle := true
 
 libraryDependencies += "org.skife.tar" % "java-gnu-tar" % "0.0.1"
 
+credentials += Credentials(Path.userHome / ".ivy2" / ".credentials-release")
+
 publishTo <<= (version) { version: String =>
   val repo = "http://192.168.0.7:8080/archiva/repository/"
   if (version.trim.endsWith("SNAPSHOT"))
