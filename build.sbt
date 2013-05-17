@@ -1,4 +1,3 @@
-
 seq(ScriptedPlugin.scriptedSettings: _*)
 
 sbtPlugin := true
