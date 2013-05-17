@@ -42,16 +42,26 @@ object SbtJswPlugin extends Plugin {
   val jswSupportedPlatforms = SettingKey[Seq[String]]("jsw-supported-platforms-options", "JSW App supported Operating Systems")
 
   val libFilter = SettingKey[File ⇒ Boolean]("lib-filter", "Filter of dependency jar files")
-  val additionalLibs = TaskKey[Seq[File]]("additional-libs", "Additional dependency jar files")
+
+  val additionalLibs = SettingKey[Seq[File]]("additional-libs", "Additional dependency files")
+
   val distConfig = TaskKey[JswConfig]("dist-config")
 
   val jswDepsFilter: NameFilter = (s: String) => s.startsWith("wrapper-delta-pack")
 
   val distNeedsPackageBin = dist <<= dist.dependsOn(packageBin in Compile)
 
-  lazy val jswPluginSettings: Seq[sbt.Project.Setting[_]] =
-
-    inConfig(Dist)(
+  lazy val jswPluginSettings: Seq[sbt.Project.Setting[_]] = Seq(
+        libFilter := {
+          f ⇒ true
+        },
+        jswInitialHeapSizeInMB := 256,
+        jswMaxHeapSizeInMB := 1024,
+        jswSupportedPlatforms := Seq(
+         "linux-x86-32", "linux-x86-64", "windows-x86-32"
+        ),
+        additionalLibs := Seq.empty[File]
+    ) ++ inConfig(Dist)(
       Seq(
         dist <<= packageBin,
         packageBin <<= distTask,
@@ -59,10 +69,6 @@ object SbtJswPlugin extends Plugin {
         dependencyClasspath <<= (dependencyClasspath in Runtime),
         unmanagedResourceDirectories <<= (unmanagedResourceDirectories in Runtime),
         configSourceDirs <<= defaultConfigSourceDirs,
-        libFilter := {
-          f ⇒ true
-        },
-        additionalLibs <<= defaultAdditionalLibs,
         distConfig <<= (name, version, configSourceDirs, jswMainClass, jswInitialHeapSizeInMB, jswMaxHeapSizeInMB, jswSupportedPlatforms, libFilter, additionalLibs) map JswConfig
       )
     ) ++
@@ -129,7 +135,7 @@ object SbtJswPlugin extends Plugin {
         copyFiles(libFiles(cp, conf.libFilter), distLibPath)
 
         //Copy additional jars to lib dir
-        copyFiles(conf.additionalLibs, distLibPath, conf.libFilter)
+        copyFiles(conf.additionalLibs.map(IO.listFiles).flatten, distLibPath, conf.libFilter)
 
         for (subTarget <- subProjectDependencies.map(_.target)) {
           copyJars(subTarget, distLibPath)
@@ -172,11 +178,6 @@ object SbtJswPlugin extends Plugin {
     (src, resources) ⇒
       Seq(src / "conf", src / "main" / "conf") ++ resources
   }
-
-  private def defaultAdditionalLibs = (libraryDependencies) map {
-    (libs) ⇒ Seq.empty[File]
-  }
-
 
   private case class JswScript(appName: String) {
 
