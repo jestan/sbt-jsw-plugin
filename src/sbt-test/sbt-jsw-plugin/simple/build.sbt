@@ -11,6 +11,8 @@ scalaVersion := "2.10.0"
 
 jswMainClass := "org.xyz.Main"
 
+jswJvmOptions := "-XX:+UseCompressedOops;-XX:+AlwaysPreTouch;-Xdebug -Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=1044"
+
 jswInitialHeapSizeInMB := 256
 
 jswMaxHeapSizeInMB := 512

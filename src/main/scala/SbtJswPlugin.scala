@@ -13,7 +13,8 @@ object SbtJswPlugin extends Plugin {
   case class JswConfig(distName: String,
                        distVersion: String,
                        configSourceDirs: Seq[File],
-                       jswMainClass: String,
+                       mainClass: String,
+                       jvmOptions: String,
                        initHeapInMB: Int,
                        maxHeapInMB: Int,
                        supportedPlatforms: Seq[String],
@@ -55,6 +56,7 @@ object SbtJswPlugin extends Plugin {
         libFilter := {
           f ⇒ true
         },
+        jswJvmOptions := "",
         jswInitialHeapSizeInMB := 256,
         jswMaxHeapSizeInMB := 1024,
         jswSupportedPlatforms := Seq(
@@ -69,7 +71,7 @@ object SbtJswPlugin extends Plugin {
         dependencyClasspath <<= (dependencyClasspath in Runtime),
         unmanagedResourceDirectories <<= (unmanagedResourceDirectories in Runtime),
         configSourceDirs <<= defaultConfigSourceDirs,
-        distConfig <<= (name, version, configSourceDirs, jswMainClass, jswInitialHeapSizeInMB, jswMaxHeapSizeInMB, jswSupportedPlatforms, libFilter, additionalLibs) map JswConfig
+        distConfig <<= (name, version, configSourceDirs, jswMainClass, jswJvmOptions, jswInitialHeapSizeInMB, jswMaxHeapSizeInMB, jswSupportedPlatforms, libFilter, additionalLibs) map JswConfig
       )
     ) ++
       Seq(
@@ -149,9 +151,9 @@ object SbtJswPlugin extends Plugin {
 
 
         //Generate Java Service Wrapper exec scripts
-        JswConf(conf.distName, conf.jswMainClass, jswLibPaths.mkString("\n"), conf.initHeapInMB, conf.maxHeapInMB).writeToPath(distConfigPath)
+        JswConf(conf.distName, conf.mainClass, conf.jvmOptions, jswLibPaths.mkString("\n"), conf.initHeapInMB, conf.maxHeapInMB).writeToPath(distConfigPath)
 
-        st.log.info("JSW distribution created at %s." format outputDir)
+        st.log.info("JSW distribution created at %s" format outputDir)
 
         outputDir
     }
@@ -825,7 +827,15 @@ object SbtJswPlugin extends Plugin {
 
   }
 
-  private case class JswConf(appName: String, mainClass: String, libPaths: String, initHeapInMB: Int, maxHeapInMB: Int) {
+  private case class JswConf(appName: String, mainClass: String, jvmOptions: String, libPaths: String, initHeapInMB: Int, maxHeapInMB: Int) {
+
+    val jswJvmOptions = if (jvmOptions.trim.isEmpty) {
+      "#wrapper.java.additional.1="
+    } else {
+      val jvmArgs = jvmOptions.split(";").toList
+      (for (i <- 1 to jvmArgs.size) yield ("wrapper.java.additional." + i + "=" + jvmArgs(i -1))).mkString("\n")
+    }
+
 
     def writeToPath(to: File) {
       val target = new File(to, "wrapper.conf")
@@ -864,7 +874,7 @@ object SbtJswPlugin extends Plugin {
         |wrapper.java.additional.auto_bits=TRUE
         |
         |# Java Additional Parameters
-        |#wrapper.java.additional.1=
+        |%s
         |
         |# Initial Java Heap Size (in MB)
         |wrapper.java.initmemory=%s
@@ -945,7 +955,7 @@ object SbtJswPlugin extends Plugin {
         |wrapper.ntservice.interactive=false
         |
         |configuration.directory.in.classpath.first=conf
-      """.stripMargin.format(libPaths, initHeapInMB, maxHeapInMB, mainClass, appName, appName, appName, appName)
+      """.stripMargin.format(libPaths, jswJvmOptions, initHeapInMB, maxHeapInMB, mainClass, appName, appName, appName, appName)
 
   }
 
